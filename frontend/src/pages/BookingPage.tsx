@@ -7,6 +7,13 @@ import { useReveal } from '../hooks/useReveal'
 import type { Reservation } from '../types'
 
 const TIMES = ['19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00']
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
+
+function getBookingErrorMessage(lang: string): string {
+  return lang === 'it'
+    ? 'Prenotazione online non disponibile al momento. Scrivici a hello@barrracuda.it o chiamaci direttamente.'
+    : 'Online booking is currently unavailable. Please email hello@barrracuda.it or call us directly.'
+}
 
 function fmtDate(iso: string, lang: string): string {
   if (!iso) return '—'
@@ -43,7 +50,7 @@ export function BookingPage() {
     setError('')
     try {
       const payload: Reservation = { date, guests, time, name, email, phone, notes }
-      const res = await fetch('/api/reservations', {
+      const res = await fetch(`${API_BASE_URL}/api/reservations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -53,9 +60,13 @@ export function BookingPage() {
       setConfirmId(data.id)
       setSubmitted(true)
     } catch {
-      // Fallback: show confirmation locally if backend isn't running
-      setConfirmId(`BR${Math.floor(Math.random() * 900000 + 100000)}`)
-      setSubmitted(true)
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        // Keep local demos usable when the API isn't running.
+        setConfirmId(`BR${Math.floor(Math.random() * 900000 + 100000)}`)
+        setSubmitted(true)
+      } else {
+        setError(getBookingErrorMessage(lang))
+      }
     } finally {
       setLoading(false)
     }
